@@ -18,9 +18,10 @@ function adim(array $s, string $a): array {
         $fiyat = $s['urunler'][$u]['fiyat'];
         $adet = 1;
         $satilan = 0;
+        $butce_reddi = false;
 
         if ($m['tip'] == 'Öğrenci' || $m['tip'] == 'Burslu Öğrenci') {
-            $fiyat = ceil($fiyat * 0.85);
+            $fiyat = (int)ceil($fiyat * 0.85);
         }
         if ($s['yogunluk']) {
             $adet = 2;
@@ -28,22 +29,30 @@ function adim(array $s, string $a): array {
         if ($s['elektrik'] > 0) {
             $s['elektrik']--;
             $s['memnuniyet'] -= 8;
-        } elseif ($s['urunler'][$u]['stok'] < $adet) {
+        } elseif ($s['urunler'][$u]['stok'] == 0) {
             $s['memnuniyet'] -= 6;
             $s['yogunluk'] = false;
-        } elseif ($m['butce'] < $fiyat * $adet) {
+        } elseif ($m['butce'] < $fiyat) {
+            $butce_reddi = true;
             $s['memnuniyet'] -= 4;
             $s['yogunluk'] = false;
         } else {
             $satilan = $adet;
-            $s['kasa'] += $fiyat * $adet;
-            $s['urunler'][$u]['stok'] -= $adet;
+            if ($satilan > $s['urunler'][$u]['stok']) {
+                $satilan = $s['urunler'][$u]['stok'];
+            }
+            if ($m['butce'] < $fiyat * $satilan) {
+                $satilan = 1;
+            }
+            $s['kasa'] += $fiyat * $satilan;
+            $s['urunler'][$u]['stok'] -= $satilan;
             $s['memnuniyet']++;
             $s['seri']++;
             $s['yogunluk'] = false;
             $s['ret_sayac'][$u] = 0;
             if ($s['seri'] % 3 == 0) {
                 $s['kasa'] += 10;
+                $s['seri'] = 0;
             }
             if ($s['urunler'][$u]['stok'] <= 3 && !$s['zam'][$u]) {
                 $s['urunler'][$u]['fiyat'] += 5;
@@ -53,7 +62,9 @@ function adim(array $s, string $a): array {
         if ($satilan == 0) {
             $s['seri'] = 0;
             $s['gunluk_ret']++;
-            $s['ret_sayac'][$u]++;
+            if ($butce_reddi) {
+                $s['ret_sayac'][$u]++;
+            }
             $sonuc = 'Satış yok';
         } else {
             $sonuc = 'Satış: ' . $satilan . ' adet';
@@ -82,8 +93,8 @@ function adim(array $s, string $a): array {
             return $s;
         }
         $s['kasa'] -= 50 + $s['gun'] * 10;
-        $s['urunler']['tost']['stok'] = ceil($s['urunler']['tost']['stok'] / 2);
-        $s['urunler']['hamburger']['stok'] = ceil($s['urunler']['hamburger']['stok'] / 2);
+        $s['urunler']['tost']['stok'] = (int)ceil($s['urunler']['tost']['stok'] / 2);
+        $s['urunler']['hamburger']['stok'] = (int)ceil($s['urunler']['hamburger']['stok'] / 2);
         if ($s['gunluk_ret'] == 0) {
             $s['memnuniyet'] += 3;
         } elseif ($s['gunluk_ret'] >= 2) {
